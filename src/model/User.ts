@@ -1,51 +1,32 @@
-import axios, { AxiosResponse } from "axios";
-
-interface UserProps {
+import { Attributes } from "./Attributes";
+import { Eventing } from "./Eventing";
+import { ApiSync } from "./ApiSync";
+import { Model } from "./Model";
+import { Collection } from "./Collection";
+export interface UserProps {
   id?: number;
   name?: string;
   age?: number;
 }
 
-type Callback = () => void;
+const rootUrl = "http://localhost:3000/users";
 
-export class User {
-  events: { [key: string]: Callback[] } = {};
-  constructor(private data: UserProps) {}
-
-  get(propName: string): number | string {
-    return this.data[propName];
+export class User extends Model<UserProps> {
+  static buildUser(attrs: UserProps): User {
+    return new User(
+      new Attributes<UserProps>(attrs),
+      new Eventing(),
+      new ApiSync<UserProps>(rootUrl)
+    );
+  }
+  static buildUserCollection(): Collection<User, UserProps> {
+    return new Collection<User, UserProps>(rootUrl, (json: UserProps) =>
+      User.buildUser(json)
+    );
   }
 
-  set(update: UserProps): void {
-    Object.assign(this.data, update);
-  }
-
-  on(eventName: string, callback: Callback) {
-    const handles = this.events[eventName] || [];
-    handles.push(callback);
-    this.events[eventName] = handles;
-  }
-
-  trigger(eventName: string): void {
-    const handlers = this.events[eventName];
-
-    if (!handlers || handlers.length === 0) {
-      return;
-    }
-
-    handlers.forEach((callback) => {
-      callback();
-    });
-  }
-
-  fetch(): void {
-    axios
-      .get(`http://localhost:3000/users/${this.get("id")}`)
-      .then((response: AxiosResponse) => {
-        this.set(response.data);
-      })
-      .catch((error) => {
-        console.error("Error fetching user data:", error);
-      });
+  setRandomAge(): void {
+    const age = Math.round(Math.random() * 100);
+    this.set({ age });
   }
 }
